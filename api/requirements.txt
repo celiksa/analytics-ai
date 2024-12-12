@@ -1,0 +1,14 @@
+asyncpg
+logfire
+pydantic
+pydantic-ai
+devtools
+matplotlib
+pandas
+seaborn
+numpy
+fastapi
+uvicorn[standard]
+websockets
+python-multipart
+
