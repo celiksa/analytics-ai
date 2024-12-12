@@ -11,4 +11,6 @@ fastapi
 uvicorn[standard]
 websockets
 python-multipart
+python-dotenv
+pydantic_settings
 

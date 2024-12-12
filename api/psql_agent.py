@@ -9,6 +9,7 @@ from devtools import debug
 from visualization_handler import VisualizationHandler
 import json
 import base64
+from config import get_settings
 
 # Configure logfire
 logfire.configure(send_to_logfire='if-token-present')
@@ -52,7 +53,8 @@ class DbAgent:
         # Initialize visualization handler
         self.viz_handler = VisualizationHandler(work_dir=viz_dir)
         self.schema = None
-        
+        settings = get_settings()
+        api_key = settings.openai_api_key,
         # Main agent for handling queries
         self.agent = Agent(
             'openai:gpt-4o',

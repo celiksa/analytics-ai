@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect,Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect,Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from psql_agent import DbAgent
@@ -8,7 +8,13 @@ import uvicorn
 import asyncpg
 from pydantic import BaseModel
 
+from config import get_settings
+
+
+
 app = FastAPI()
+settings = get_settings()
+
 
 chat_histories: Dict[str, List[dict]] = {}
 
@@ -47,9 +53,10 @@ async def list_databases():
     """List all available PostgreSQL databases and their schemas."""
     try:
         # Connect to postgres database to list all databases
-        conn = await asyncpg.connect(
+        """ conn = await asyncpg.connect(
             'postgresql://postgres:postgres@localhost:54320/postgres'
-        )
+        ) """
+        conn = await asyncpg.connect(settings.get_database_url('postgres'))
         
         # Get all databases
         databases = await conn.fetch("""
@@ -63,8 +70,11 @@ async def list_databases():
         for db in databases:
             db_name = db['datname']
             # Connect to specific database to get schemas
+            """  db_conn = await asyncpg.connect(
+                    f'postgresql://postgres:postgres@localhost:54320/{db_name}'
+                ) """
             db_conn = await asyncpg.connect(
-                f'postgresql://postgres:postgres@localhost:54320/{db_name}'
+                f'{settings.get_database_url(db_name)}'
             )
             schemas = await db_conn.fetch("""
                 SELECT schema_name 
@@ -104,7 +114,7 @@ async def websocket_endpoint(
     try:
         db_agent = DbAgent(viz_dir="./visualizations")
         await db_agent.setup(
-            f'postgresql://postgres:postgres@localhost:54320/{db}',
+            f'{settings.get_database_url(db)}',
             schema=schema
         )
 
