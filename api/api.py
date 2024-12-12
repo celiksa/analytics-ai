@@ -1,15 +1,25 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect,Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from psql_agent import DbAgent
-import json
-import asyncio
 import base64
-from typing import Optional, List
+from typing import List, Dict
 import uvicorn
 import asyncpg
+from pydantic import BaseModel
 
 app = FastAPI()
+
+chat_histories: Dict[str, List[dict]] = {}
+
+class ChatSession(BaseModel):
+    session_id: str
+    messages: List[dict]
+
+@app.get("/chat/history/{session_id}")
+async def get_chat_history(session_id: str):
+    """Get chat history for a specific session."""
+    return chat_histories.get(session_id, [])
 
 # Configure CORS
 app.add_middleware(
@@ -82,7 +92,8 @@ async def list_databases():
 async def websocket_endpoint(
     websocket: WebSocket,
     db: str = None,
-    schema: str = None
+    schema: str = None,
+    session_id: str = Query(...)
     ):
 
     if not db or not schema:
@@ -96,14 +107,23 @@ async def websocket_endpoint(
             f'postgresql://postgres:postgres@localhost:54320/{db}',
             schema=schema
         )
+
+        # Get existing chat history
+        existing_messages = chat_histories.get(session_id, [])
+
         while True:
             try:
+                
                 # Receive message from client
                 message = await websocket.receive_text()
                 
                 # Execute query without streaming
                 try:
-                    result = await db_agent.query(message, db, schema)
+                    result = await db_agent.query(message, db, schema, message_history=existing_messages)
+                    # Update history with new messages
+                    new_messages = result.new_messages()
+                    existing_messages.extend(new_messages)
+                    chat_histories[session_id] = existing_messages
                     
                     # Send the main response
                     await websocket.send_json({

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, User, Database, Loader2, ChevronDown, BarChart } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid'; 
 
 interface DatabaseInfo {
   name: string;
@@ -23,6 +24,32 @@ export default function Chat() {
     const [isConnected, setIsConnected] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const ws = useRef<WebSocket | null>(null);
+    const [sessionId, setSessionId] = useState<string>('');
+
+      // Initialize session ID and load history on mount
+    useEffect(() => {
+      // Try to get existing session ID from localStorage
+      let existingSessionId = localStorage.getItem('chatSessionId');
+      if (!existingSessionId) {
+        existingSessionId = uuidv4();
+        localStorage.setItem('chatSessionId', existingSessionId);
+      }
+      setSessionId(existingSessionId);
+      
+      // Load chat history for this session
+      if (existingSessionId) {
+        fetch(`http://localhost:8001/chat/history/${existingSessionId}`)
+          .then(res => res.json())
+          .then(historyMessages => {
+            setMessages(historyMessages.map((msg: any) => ({
+              role: msg.role,
+              content: msg.content,
+              visualization: msg.visualization
+            })));
+          })
+          .catch(err => console.error('Failed to load chat history:', err));
+      }
+    }, []);
 
     useEffect(() => {
         fetch('http://localhost:8001/databases')
@@ -30,16 +57,20 @@ export default function Chat() {
           .then(data => setDatabases(data))
           .catch(err => console.error('Failed to fetch databases:', err));
       }, []);
-
+    
+      
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const connectWebSocket = () => {
-    if (!selectedDb || !selectedSchema) return;
+    if (!selectedDb || !selectedSchema || !sessionId) return;
     ws.current = new WebSocket(
-        `ws://localhost:8001/ws/chat?db=${selectedDb}&schema=${selectedSchema}`
-      );
+      `ws://localhost:8001/ws/chat?` + 
+      `db=${selectedDb}&` +
+      `schema=${selectedSchema}&` +
+      `session_id=${sessionId}`
+    );
     
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -77,15 +108,27 @@ export default function Chat() {
     };
   };
 
+  
+
   useEffect(() => {
-    if (selectedDb && selectedSchema) {
+    if (sessionId && selectedDb && selectedSchema) {
       connectWebSocket();
       setIsConnected(true);
     } else {
       setIsConnected(false);
     }
     return () => ws.current?.close();
-  }, [selectedDb, selectedSchema]);
+  }, [sessionId, selectedDb, selectedSchema]);
+
+  // Add Clear Chat History button to sidebar
+  const clearHistory = async () => {
+    if (confirm('Are you sure you want to clear the chat history?')) {
+      setMessages([]);
+      const newSessionId = uuidv4();
+      localStorage.setItem('chatSessionId', newSessionId);
+      setSessionId(newSessionId);
+    }
+  };
 
   const renderDatabaseSelection = () => (
     <div className="flex items-center space-x-4">
@@ -213,6 +256,17 @@ export default function Chat() {
               <span>{isConnected ? 'Connected' : 'Not Connected'}</span>
             </div>
           </div>
+        </div>
+        {/* Add Clear History button */}
+        <div className="p-4 mt-auto border-t">
+          <button
+            onClick={clearHistory}
+            className="w-full px-4 py-2 text-sm text-red-600 hover:text-red-700 
+                     border border-red-200 rounded-lg hover:bg-red-50 
+                     transition-colors duration-200"
+          >
+            Clear Chat History
+          </button>
         </div>
       </div>
 

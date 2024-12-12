@@ -190,10 +190,10 @@ class DbAgent:
         """Close database connection."""
         await self.pool.close()
         
-    async def query(self, prompt: str, database: str, schema: str) -> DatabaseResult:
+    async def query(self, prompt: str, database: str, schema: str, message_history: str) -> DatabaseResult:
         """Execute a query based on natural language prompt."""
         deps = DatabaseConnection(self.pool, self.viz_handler, database, schema)
-        return await self.agent.run(prompt, deps=deps)
+        return await self.agent.run(prompt, deps=deps, message_history=message_history)
         
     """ async def query_stream(self, prompt: str):
         
