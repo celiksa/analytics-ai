@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, User, Database, Loader2, ChevronDown, BarChart } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid'; 
 
+
 interface DatabaseInfo {
   name: string;
   schemas: string[];

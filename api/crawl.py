@@ -144,7 +144,7 @@ class WebsiteCrawler:
             print(f"Pages processed: {len(self.visited)}")
 
 def main():
-    start_url = "https://ai.pydantic.dev/"
+    start_url = "https://platform.openai.com"
     output_file = "pydantic_documentation.pdf"
     
     crawler = WebsiteCrawler(start_url, output_file)
